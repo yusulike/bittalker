@@ -1,0 +1,8 @@
+{
+  "interval": 100,
+  "voice": "F1",
+  "language": "Korean",
+  "always_on_top": true,
+  "muted": false,
+  "ticker_mode": true
+}
