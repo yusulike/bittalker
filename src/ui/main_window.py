@@ -1,6 +1,5 @@
-import sys
-from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel, 
-                             QPushButton, QApplication, QMessageBox, QFrame)
+from PyQt6.QtWidgets import (QMainWindow, QWidget, QVBoxLayout, QHBoxLayout, QLabel,
+                             QPushButton, QFrame)
 from PyQt6.QtCore import Qt, pyqtSlot
 from PyQt6.QtGui import QFont
 
@@ -27,10 +26,6 @@ class MainWindow(QMainWindow):
         self.always_on_top = self.settings_manager.get("always_on_top", True)
         self.ticker_mode = self.settings_manager.get("ticker_mode", False)
         saved_interval = self.settings_manager.get("interval", 50)
-        
-        # Price tracking for percentage calculation
-        self.baseline_price = None  # First price received
-        self.current_price = 0
 
         # Core Components
         self.price_monitor = PriceMonitor()
@@ -61,31 +56,9 @@ class MainWindow(QMainWindow):
         """) 
         self.setCentralWidget(self.central_widget)
         self.main_layout = QVBoxLayout(self.central_widget)
-        self.main_layout.setContentsMargins(15, 10, 15, 15)
-        self.main_layout.setSpacing(5)
-        
-        # Top Bar
-        top_bar = QHBoxLayout()
-        top_bar.addStretch()
-        
-        self.close_btn = QPushButton("✕")
-        self.close_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.close_btn.setFixedSize(24, 20)
-        self.close_btn.setStyleSheet("""
-            QPushButton {
-                background-color: transparent;
-                color: #444;
-                border: none;
-                font-size: 14px;
-                font-weight: bold;
-            }
-            QPushButton:hover { color: #FF5252; }
-        """)
-        self.close_btn.clicked.connect(self.close)
-        top_bar.addWidget(self.close_btn)
-        
-        self.main_layout.addLayout(top_bar)
-        
+        self.main_layout.setContentsMargins(6, 4, 6, 4)
+        self.main_layout.setSpacing(2)
+
         # Content Container (for layout switching)
         self.content_container = QWidget()
         self.content_container.setStyleSheet("background: transparent; border: none;")
@@ -106,15 +79,7 @@ class MainWindow(QMainWindow):
         self.price_indicator.setFixedWidth(25)
         self.price_indicator.setAlignment(Qt.AlignmentFlag.AlignLeft | Qt.AlignmentFlag.AlignVCenter)
         self.price_indicator.setStyleSheet("color: #00E676; border: none; font-size: 20px;")
-        
-        # Percent change label (for ticker mode)
-        self.percent_label = QLabel("+0.00%")
-        self.percent_label.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignVCenter)
-        self.percent_label.setFixedWidth(70)  # Fixed width to prevent layout shift
-        self.percent_label.setStyleSheet("color: #888; border: none; font-size: 14px;")
-        percent_font = QFont("Consolas, monospace", 12)
-        self.percent_label.setFont(percent_font)
-        
+
         # Simple time label (for ticker mode)
         self.simple_time_label = QLabel("00:00:00 AM")
         self.simple_time_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
@@ -136,8 +101,8 @@ class MainWindow(QMainWindow):
         self.status_label.setStyleSheet("""
             background-color: #222;
             color: #888;
-            padding: 5px 10px;
-            border-radius: 12px;
+            padding: 2px 8px;
+            border-radius: 10px;
             font-size: 11px;
             border: 1px solid #333;
         """)
@@ -153,7 +118,7 @@ class MainWindow(QMainWindow):
                 color: #888; 
                 border: 1px solid #333;
                 border-radius: 12px;
-                padding: 5px 10px;
+                padding: 2px 8px;
                 font-size: 12px;
             }
             QPushButton:hover { 
@@ -177,7 +142,7 @@ class MainWindow(QMainWindow):
                 color: #888; 
                 border: 1px solid #333;
                 border-radius: 12px;
-                padding: 5px 10px;
+                padding: 2px 8px;
                 font-size: 12px;
             }
             QPushButton:hover { 
@@ -201,7 +166,7 @@ class MainWindow(QMainWindow):
                 color: #888; 
                 border: 1px solid #333;
                 border-radius: 12px;
-                padding: 5px 10px;
+                padding: 2px 8px;
                 font-size: 12px;
             }
             QPushButton:hover { 
@@ -238,13 +203,19 @@ class MainWindow(QMainWindow):
                 elif item.layout():
                     self._clear_layout(item.layout())
             QWidget().setLayout(layout)
-        
-        # Hide top close button (use inline close instead)
-        self.close_btn.hide()
-        
+
+        # Keep the 1s timer running in both modes (drives the hourly chime;
+        # the time labels themselves are only visible in ticker mode)
+        from PyQt6.QtCore import QTimer
+        if not hasattr(self, 'ticker_timer'):
+            self.ticker_timer = QTimer()
+            self.ticker_timer.timeout.connect(self.update_simple_time)
+        self.ticker_timer.start(1000)
+        self.update_simple_time()
+
         if self.ticker_mode:
             # === TICKER MODE: Single line layout ===
-            self.main_layout.setContentsMargins(10, 8, 10, 8)
+            self.main_layout.setContentsMargins(10, 2, 10, 2)
             
             layout = QHBoxLayout(self.content_container)
             layout.setContentsMargins(0, 0, 0, 0)
@@ -290,26 +261,18 @@ class MainWindow(QMainWindow):
             
             self.resize(540, 45)  # Slightly wider for separator
             self.setFixedHeight(45)  # Force height adjustment
-            
-            # Start simple time timer
-            from PyQt6.QtCore import QTimer
-            if not hasattr(self, 'ticker_timer'):
-                self.ticker_timer = QTimer()
-                self.ticker_timer.timeout.connect(self.update_simple_time)
-            self.ticker_timer.start(1000)
-            self.update_simple_time()
-            
+
         else:
             # === NORMAL MODE: Clock + Price ===
-            self.main_layout.setContentsMargins(10, 5, 10, 5)
-            
+            self.main_layout.setContentsMargins(6, 4, 6, 4)
+
             # Remove fixed height constraint for normal mode
             self.setMinimumHeight(0)
             self.setMaximumHeight(16777215)  # QWIDGETSIZE_MAX
-            
+
             layout = QHBoxLayout(self.content_container)
             layout.setContentsMargins(0, 0, 0, 0)
-            layout.setSpacing(15)
+            layout.setSpacing(10)
             
             # Restore original font for normal mode
             normal_price_font = QFont("Consolas, monospace", 32, QFont.Weight.Bold)
@@ -334,7 +297,7 @@ class MainWindow(QMainWindow):
             
             # Right: Price + Info (vertically centered)
             price_zone = QVBoxLayout()
-            price_zone.setSpacing(5)
+            price_zone.setSpacing(3)
             price_zone.addStretch()
             
             # Price row
@@ -347,7 +310,7 @@ class MainWindow(QMainWindow):
             
             # Info row (with inline close button)
             info_row = QHBoxLayout()
-            info_row.setSpacing(5)
+            info_row.setSpacing(3)
             info_row.addStretch()
             info_row.addWidget(self.status_label)
             info_row.addWidget(self.mute_btn)
@@ -365,8 +328,8 @@ class MainWindow(QMainWindow):
             layout.addLayout(clock_zone)
             layout.addWidget(separator)
             layout.addLayout(price_zone)
-            
-            self.resize(520, 110)  # Normal size
+
+            self.resize(520, 100)  # Normal size
     
     def update_simple_time(self):
         """Update simple time and date labels for ticker mode"""
@@ -426,16 +389,10 @@ class MainWindow(QMainWindow):
     def on_price_update(self, price):
         # Get previous price for direction indicator
         prev_price = self.interval_tracker.last_price
-        
-        # Set baseline price (first price received)
-        if self.baseline_price is None:
-            self.baseline_price = price
-        
-        self.current_price = price
-        
+
         # Update price text (fixed position)
         self.price_label.setText(f"${price:,.2f}")
-        
+
         # Update indicator separately (fixed width, no layout shift)
         if prev_price is not None:
             if price > prev_price:
@@ -445,23 +402,7 @@ class MainWindow(QMainWindow):
                 self.price_indicator.setText("▼")
                 self.price_indicator.setStyleSheet("color: #FF5252; border: none; font-size: 20px;")
             # else: keep previous indicator
-        
-        # Update percent change (for ticker mode)
-        if self.baseline_price > 0:
-            percent_change = ((price - self.baseline_price) / self.baseline_price) * 100
-            sign = "+" if percent_change >= 0 else ""
-            
-            # Color: green for positive, red for negative, gray for zero
-            if percent_change > 0:
-                color = "#00E676"
-            elif percent_change < 0:
-                color = "#FF5252"
-            else:
-                color = "#888"  # Gray for 0%
-            
-            self.percent_label.setText(f"{sign}{percent_change:.2f}%")
-            self.percent_label.setStyleSheet(f"color: {color}; border: none; font-size: 14px;")
-        
+
         self.interval_tracker.process_price(price)
 
     @pyqtSlot(bool)
@@ -471,7 +412,7 @@ class MainWindow(QMainWindow):
         self.status_label.setStyleSheet(f"""
             background-color: #222;
             color: {color};
-            padding: 5px 10px;
+            padding: 2px 8px;
             border-radius: 12px;
             font-size: 11px;
             border: 1px solid {color};
@@ -580,7 +521,7 @@ class MainWindow(QMainWindow):
         self.status_label.setStyleSheet("""
             background-color: #222;
             color: #FF5252;
-            padding: 5px 10px;
+            padding: 2px 8px;
             border-radius: 12px;
             font-size: 11px;
             border: 1px solid #FF5252;

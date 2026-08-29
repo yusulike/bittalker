@@ -1,22 +1,27 @@
 import os
+import json
 import hashlib
 import threading
-import time
 import winsound
-import numpy as np
 import soundfile as sf # Required for helper.py style saving
-from PyQt6.QtCore import QObject, pyqtSignal, QUrl
+from uuid import uuid4
+from PyQt6.QtCore import QObject, pyqtSignal
 
 # Import from the user-provided helper.py
 # Assuming src/services/helper.py exists and path includes src/
-from services.helper import load_text_to_speech, load_voice_style, sanitize_filename
+from services.helper import load_text_to_speech, load_voice_style
 
 class TTSService(QObject):
     # Signal emitted when TTS generation fails
     tts_error = pyqtSignal(str)  # error message
-    
-    def __init__(self, cache_dir="cache"):
+
+    def __init__(self, cache_dir=None):
         super().__init__()
+        if cache_dir is None:
+            # Anchor to the project root so the cache location doesn't depend
+            # on the working directory the app was launched from
+            project_root = os.path.abspath(os.path.join(os.path.dirname(__file__), '..', '..'))
+            cache_dir = os.path.join(project_root, "cache")
         self.cache_dir = cache_dir
         if not os.path.exists(self.cache_dir):
             os.makedirs(self.cache_dir)
@@ -36,7 +41,7 @@ class TTSService(QObject):
             if os.path.exists(self.onnx_dir) and os.path.exists(self.voice_styles_dir):
                 # Load Engine
                 # Using load_text_to_speech from helper.py
-                self.engine = load_text_to_speech(self.onnx_dir, use_gpu=False)
+                self.engine = load_text_to_speech(self.onnx_dir)
                 
                 # Scan available voices
                 self.available_voice_names = self._scan_voice_styles(self.voice_styles_dir)
@@ -49,10 +54,19 @@ class TTSService(QObject):
             print(f"Failed to init Supertonic via helper: {e}")
             self.engine = None
 
+        # Model version for cache keying, so audio cached by an older
+        # model never gets replayed after a model upgrade
+        self.model_version = "unknown"
+        try:
+            with open(os.path.join(self.onnx_dir, "tts.json"), "r") as f:
+                self.model_version = json.load(f).get("tts_version", "unknown")
+        except Exception:
+            pass
+
         # Queue system: size 1 with override structure
         self._is_playing = False
         self._play_lock = threading.Lock()
-        self._pending_audio = None  # Tuple: (filepath,) or None
+        self._pending_audio = None  # Tuple: (filepath, delete_after) or None
 
     def _scan_voice_styles(self, voice_dir):
         # Scan json files in voice_styles dir
@@ -74,17 +88,19 @@ class TTSService(QObject):
             filename = self._get_cache_filename(text, voice, lang)
             filepath = os.path.join(self.cache_dir, filename)
         else:
-            filepath = os.path.join(self.cache_dir, "temp_test_voice.wav")
+            # Unique name per call so concurrent Test Voice clicks don't
+            # race on a single temp file
+            filepath = os.path.join(self.cache_dir, f"temp_test_voice_{uuid4().hex}.wav")
 
         if not cache or not os.path.exists(filepath):
             print(f"Generating TTS (Cache={cache}, Lang={lang}) for: {text}")
             self._generate_audio(text, voice, lang, filepath)
-        
+
         if os.path.exists(filepath):
-            self._play_audio(filepath)
+            self._play_audio(filepath, delete_after=not cache)
 
     def _get_cache_filename(self, text, voice, lang):
-        key = f"{text}_{voice}_{lang}".encode('utf-8')
+        key = f"{text}_{voice}_{lang}_{self.model_version}".encode('utf-8')
         hash_digest = hashlib.md5(key).hexdigest()
         return f"{hash_digest}.wav"
 
@@ -159,7 +175,7 @@ class TTSService(QObject):
                 data.append(struct.pack('<h', value))
             wav_file.writeframes(b''.join(data))
 
-    def _play_audio(self, filepath):
+    def _play_audio(self, filepath, delete_after=False):
         """
         Queue-aware audio playback.
         If already playing, add to pending queue (size 1, override).
@@ -167,38 +183,41 @@ class TTSService(QObject):
         with self._play_lock:
             if self._is_playing:
                 # Override existing pending audio
-                self._pending_audio = (filepath,)
+                self._pending_audio = (filepath, delete_after)
                 print(f"[TTS Queue] Audio queued (override): {filepath}")
                 return
             else:
                 self._is_playing = True
-        
+
         # Start playback in separate thread to allow sync wait
-        threading.Thread(target=self._play_and_process_queue, args=(filepath,), daemon=True).start()
-    
-    def _play_and_process_queue(self, filepath):
+        threading.Thread(target=self._play_and_process_queue, args=(filepath, delete_after), daemon=True).start()
+
+    def _play_and_process_queue(self, filepath, delete_after):
         """
         Play audio synchronously, then process pending queue.
         """
-        try:
-            print(f"[TTS] Playing: {filepath}")
-            # Use sync playback to know when it finishes
-            winsound.PlaySound(filepath, winsound.SND_FILENAME)
-        except Exception as e:
-            print(f"Playback Error: {e}")
-        
-        # Check for pending audio
-        with self._play_lock:
-            if self._pending_audio:
-                next_audio = self._pending_audio
-                self._pending_audio = None
-            else:
-                self._is_playing = False
-                next_audio = None
-        
-        # Play next audio if exists
-        if next_audio:
-            next_filepath = next_audio[0]
-            print(f"[TTS Queue] Playing pending: {next_filepath}")
-            self._play_and_process_queue(next_filepath)
+        current, delete = filepath, delete_after
+        while current:
+            try:
+                print(f"[TTS] Playing: {current}")
+                # Use sync playback to know when it finishes
+                winsound.PlaySound(current, winsound.SND_FILENAME)
+            except Exception as e:
+                print(f"Playback Error: {e}")
+            finally:
+                if delete:
+                    try:
+                        os.remove(current)
+                    except OSError:
+                        pass
+
+            # Check for pending audio
+            with self._play_lock:
+                if self._pending_audio:
+                    current, delete = self._pending_audio
+                    self._pending_audio = None
+                    print(f"[TTS Queue] Playing pending: {current}")
+                else:
+                    self._is_playing = False
+                    current = None
 

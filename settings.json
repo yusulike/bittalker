@@ -1,8 +1,8 @@
 {
-  "interval": 100,
+  "interval": 50,
   "voice": "F1",
   "language": "Korean",
   "always_on_top": true,
   "muted": false,
-  "ticker_mode": true
+  "ticker_mode": false
 }

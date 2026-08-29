@@ -4,8 +4,8 @@ from pathlib import Path
 from huggingface_hub import snapshot_download
 
 # Configuration
-REPO_ID = "Supertone/supertonic-2"
-REVISION = "main" # Assuming main branch for 2.0
+REPO_ID = "Supertone/supertonic-3"
+REVISION = "main"
 ASSETS_DIR = Path("e:/myWork/bittalker/assets")
 
 def download_assets():

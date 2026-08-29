@@ -3,121 +3,191 @@ license: openrail
 language:
     - en
     - ko
+    - ja
+    - ar
+    - bg
+    - cs
+    - da
+    - de
+    - el
     - es
-    - pt
+    - et
+    - fi
     - fr
+    - hi
+    - hr
+    - hu
+    - id
+    - it
+    - lt
+    - lv
+    - nl
+    - pl
+    - pt
+    - ro
+    - ru
+    - sk
+    - sl
+    - sv
+    - tr
+    - uk
+    - vi
 pipeline_tag: text-to-speech
 tags:
     - text-to-speech
     - speech-synthesis
     - tts
     - onnx
+    - multilingual
+    - on-device
 library_name: supertonic
 ---
 
-# Supertonic 2 — Lightning Fast, On-Device TTS, Multilingual TTS
+# Supertonic 3 | Lightning Fast, On-Device, Accurate TTS
 
-![Supertonic Preview](img/supertonic_preview_0.1.jpg)
+![Supertonic 3 Preview](img/Supertonic3_HeroImage.png)
 
 <p align="center">
-  <a href="https://huggingface.co/spaces/Supertone/supertonic-2"><img src="https://img.shields.io/badge/🤗_Demo-Hugging_Face-yellow?style=for-the-badge" alt="Demo"></a>
-  <a href="https://github.com/supertone-inc/supertonic"><img src="https://img.shields.io/badge/💻_Code-GitHub-black?style=for-the-badge&logo=github" alt="Code"></a>
+  <a href="https://huggingface.co/spaces/Supertone/supertonic-3"><img src="https://img.shields.io/badge/Demo-Hugging_Face-yellow?style=for-the-badge" alt="Demo"></a>
+  <a href="https://github.com/supertone-inc/supertonic"><img src="https://img.shields.io/badge/Code-GitHub-black?style=for-the-badge&logo=github" alt="Code"></a>
+  <a href="https://pypi.org/project/supertonic/"><img src="https://img.shields.io/badge/Python-SDK-blue?style=for-the-badge&logo=python" alt="Python SDK"></a>
 </p>
 
-**Supertonic** is a lightning-fast, on-device text-to-speech system designed for **extreme performance** with minimal computational overhead. Powered by ONNX Runtime, it runs entirely on your device—no cloud, no API calls, no privacy concerns.
+**Supertonic** is a lightweight text-to-speech system for local inference. It runs with ONNX Runtime entirely on your device, with no cloud call required for synthesis.
 
-## What's New in Supertonic 2
+**Supertonic 3** expands the open-weight release from 5 to **31 languages**, improves reading stability, and reduces repeat/skip failures.
 
-**Supertonic 2** extends multilingual capabilities while maintaining the same inference speed and efficiency as the original.
+## Quick Start
 
-### 🌍 Multilingual Support
+Install the Python SDK and generate speech immediately. On first run, the SDK downloads the model assets from Hugging Face.
 
-| Language | Code |
-|----------|------|
-| English | `en` |
-| Korean | `ko` |
-| Spanish | `es` |
-| Portuguese | `pt` |
-| French | `fr` |
+```bash
+pip install supertonic
+```
 
-### ⚡ Same Speed, More Languages
+```python
+from supertonic import TTS
 
-- **No speed degradation**: Supertonic 2 delivers the same ultra-fast inference speed as the original—up to **167× faster than real-time**
-- **Efficient architecture**: Only **66M parameters**, optimized for on-device deployment
-- **Cross-language consistency**: All supported languages share the same model architecture and inference pipeline
+tts = TTS(auto_download=True)
+style = tts.get_voice_style(voice_name="M1")
 
-## Performance
+text = "A gentle breeze moved through the open window while everyone listened to the story."
+wav, duration = tts.synthesize(text, voice_style=style, lang="en")
 
-We evaluated Supertonic's performance (with 2 inference steps) using two key metrics across input texts of varying lengths: Short (59 chars), Mid (152 chars), and Long (266 chars).
+tts.save_audio(wav, "output.wav")
+print(f"Generated {duration:.2f}s of audio")
+```
 
-**Metrics:**
-- **Characters per Second**: Measures throughput by dividing the number of input characters by the time required to generate audio. Higher is better.
-- **Real-time Factor (RTF)**: Measures the time taken to synthesize audio relative to its duration. Lower is better (e.g., RTF of 0.1 means it takes 0.1 seconds to generate one second of audio).
+## What's New in Supertonic 3
 
-### Characters per Second
-| System | Short (59 chars) | Mid (152 chars) | Long (266 chars) |
-|--------|-----------------|----------------|-----------------|
-| **Supertonic** (M4 pro - CPU) | 912 | 1048 | 1263 |
-| **Supertonic** (M4 pro - WebGPU) | 996 | 1801 | 2509 |
-| **Supertonic** (RTX4090) | 2615 | 6548 | 12164 |
-| `API` [ElevenLabs Flash v2.5](https://elevenlabs.io/docs/api-reference/text-to-speech/convert) | 144 | 209 | 287 |
-| `API` [OpenAI TTS-1](https://platform.openai.com/docs/guides/text-to-speech) | 37 | 55 | 82 |
-| `API` [Gemini 2.5 Flash TTS](https://ai.google.dev/gemini-api/docs/speech-generation) | 12 | 18 | 24 |
-| `API` [Supertone Sona speech 1](https://docs.supertoneapi.com/en/api-reference/endpoints/text-to-speech) | 38 | 64 | 92 |
-| `Open` [Kokoro](https://github.com/hexgrad/kokoro/) | 104 | 107 | 117 |
-| `Open` [NeuTTS Air](https://github.com/neuphonic/neutts-air) | 37 | 42 | 47 |
+- **31 languages**: expanded from the 5-language Supertonic 2 release.
+- **More stable reading**: fewer repeat and skip failures, especially on short and long utterances.
+- **Higher speaker similarity**: improved similarity across the shared-language set compared with Supertonic 2.
+- **Expression tags**: supports simple tags such as `<laugh>`, `<breath>`, and `<sigh>`.
 
-> **Notes:**  
-> `API` = Cloud-based API services (measured from Seoul)  
-> `Open` = Open-source models  
-> Supertonic (M4 pro - CPU) and (M4 pro - WebGPU): Tested with ONNX  
-> Supertonic (RTX4090): Tested with PyTorch model  
-> Kokoro: Tested on M4 Pro CPU with ONNX  
-> NeuTTS Air: Tested on M4 Pro CPU with Q8-GGUF
+## Custom Voices and Audio Samples
 
-### Real-time Factor
+The open-weight package includes fixed preset voice styles for immediate local inference. If you want to hear how Supertonic 3 performs with zero-shot custom voice styles, visit the [Audio Sample Demo](https://supertonic3.github.io/) to compare reference audio and generated speech across several use cases. To create your own Supertonic 3 voice-style JSON from reference audio, use [Supertonic Voice Builder](https://supertonic.supertone.ai/voice-builder); purchased Voice Builder styles include downloadable embeddings for both Supertonic 2 and Supertonic 3.
 
-| System | Short (59 chars) | Mid (152 chars) | Long (266 chars) |
-|--------|-----------------|----------------|-----------------|
-| **Supertonic** (M4 pro - CPU) | 0.015 | 0.013 | 0.012 |
-| **Supertonic** (M4 pro - WebGPU) | 0.014 | 0.007 | 0.006 |
-| **Supertonic** (RTX4090) | 0.005 | 0.002 | 0.001 |
-| `API` [ElevenLabs Flash v2.5](https://elevenlabs.io/docs/api-reference/text-to-speech/convert) | 0.133 | 0.077 | 0.057 |
-| `API` [OpenAI TTS-1](https://platform.openai.com/docs/guides/text-to-speech) | 0.471 | 0.302 | 0.201 |
-| `API` [Gemini 2.5 Flash TTS](https://ai.google.dev/gemini-api/docs/speech-generation) | 1.060 | 0.673 | 0.541 |
-| `API` [Supertone Sona speech 1](https://docs.supertoneapi.com/en/api-reference/endpoints/text-to-speech) | 0.372 | 0.206 | 0.163 |
-| `Open` [Kokoro](https://github.com/hexgrad/kokoro/) | 0.144 | 0.124 | 0.126 |
-| `Open` [NeuTTS Air](https://github.com/neuphonic/neutts-air) | 0.390 | 0.338 | 0.343 |
+Here are a few reference/generated pairs from the audio sample demo:
 
-<details>
-<summary><b>Additional Performance Data (5-step inference)</b></summary>
+**Call center, English**  
+Text: Good morning, thank you for calling. How can I help you today?
 
-<br>
+| Reference voice | Supertonic 3 output |
+|---|---|
+| <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/nora_reference.wav"></audio> | <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/nora_supertonic3.wav"></audio> |
 
-**Characters per Second (5-step)**
+**Character voice, Japanese**  
+Text: ふふっ、退屈してたところなの。ちょうどいい遊び相手、見つけたかも♪
 
-| System | Short (59 chars) | Mid (152 chars) | Long (266 chars) |
-|--------|-----------------|----------------|-----------------|
-| **Supertonic** (M4 pro - CPU) | 596 | 691 | 850 |
-| **Supertonic** (M4 pro - WebGPU) | 570 | 1118 | 1546 |
-| **Supertonic** (RTX4090) | 1286 | 3757 | 6242 |
+| Reference voice | Supertonic 3 output |
+|---|---|
+| <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/moka_reference.wav"></audio> | <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/moka_supertonic3.wav"></audio> |
 
-**Real-time Factor (5-step)**
+**Elder character voice, Korean**  
+Text: 혼자 떠나기엔 길이 험하구나. 이 낡은 검을 가져가거라. 언젠가 어둠이 네 이름을 부르더라도, 부디 빛을 잊지 말거라.
 
-| System | Short (59 chars) | Mid (152 chars) | Long (266 chars) |
-|--------|-----------------|----------------|-----------------|
-| **Supertonic** (M4 pro - CPU) | 0.023 | 0.019 | 0.018 |
-| **Supertonic** (M4 pro - WebGPU) | 0.024 | 0.012 | 0.010 |
-| **Supertonic** (RTX4090) | 0.011 | 0.004 | 0.002 |
+| Reference voice | Supertonic 3 output |
+|---|---|
+| <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/alphonse_reference.wav"></audio> | <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/alphonse_supertonic3.wav"></audio> |
 
-</details>
+**Audiobook, English**  
+Text: I was not afraid of silence. I had lived with it long enough to know that, sometimes, it speaks more honestly than people do.
+
+| Reference voice | Supertonic 3 output |
+|---|---|
+| <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/luna_reference.wav"></audio> | <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/luna_supertonic3.wav"></audio> |
+
+**Audiobook, Japanese**  
+Text: その朝、ロンドンの霧はいつになく低く垂れこめていた。私はただの訪問者だと思っていたが、ホームズの目はすでに別の結論にたどり着いていた。
+
+| Reference voice | Supertonic 3 output |
+|---|---|
+| <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/watson_reference.wav"></audio> | <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/watson_supertonic3.wav"></audio> |
+
+**News, English**  
+Text: Here’s a story worth paying attention to. Supertone has released Supertonic 3, its on-device TTS model. This version expands support to thirty-one languages and improves reading stability.
+
+| Reference voice | Supertonic 3 output |
+|---|---|
+| <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/keld_reference.wav"></audio> | <audio controls preload="metadata" src="https://huggingface.co/Supertone/supertonic-3/resolve/main/audio_samples/keld_supertonic3.wav"></audio> |
+
+## Performance Highlights
+
+Supertonic 3 is designed for practical on-device inference: compact enough to run locally, while staying competitive with much larger open TTS systems.
+
+### Reading Accuracy
+
+<p align="center">
+  <img src="img/metrics/s3_vs_measured_wer_range_voxcpm2.png" alt="Supertonic 3 reading accuracy compared with measured model ranges and VoxCPM2">
+</p>
+
+Across measured languages, Supertonic 3 stays within a competitive WER/CER range against much larger open TTS models such as VoxCPM2, while preserving a lightweight on-device deployment path. Asterisked languages use CER; the others use WER.
+
+### Supertonic 2 to Supertonic 3
+
+<p align="center">
+  <img src="img/metrics/supertonic2_vs_3_comparison.png" alt="Supertonic 2 and Supertonic 3 comparison">
+</p>
+
+Compared with Supertonic 2, Supertonic 3 reduces repeat and skip failures, improves speaker similarity across the shared-language set, and expands language coverage from 5 to 31 languages.
+
+### Runtime Footprint
+
+<p align="center">
+  <img src="img/metrics/runtime_cpu_gpu_latency_memory.png" alt="Supertonic CPU runtime compared with GPU baselines">
+</p>
+
+Supertonic 3 runs fast on CPU, even compared with larger baselines measured on A100 GPU, and uses substantially less memory. It does not require a GPU, which makes local, browser, and edge deployment much easier.
+
+### Model Size
+
+<p align="center">
+  <img src="img/metrics/model_size_comparison.png" alt="Model size comparison">
+</p>
+
+At about 99M parameters across the public ONNX assets, Supertonic 3 is much smaller than 0.7B to 2B class open TTS systems. The smaller model size is a practical advantage for download size, startup time, and on-device inference.
+
+## Supported Languages
+
+| Code | Language | Code | Language | Code | Language | Code | Language |
+|------|----------|------|----------|------|----------|------|----------|
+| `en` | English | `ko` | Korean | `ja` | Japanese | `ar` | Arabic |
+| `bg` | Bulgarian | `cs` | Czech | `da` | Danish | `de` | German |
+| `el` | Greek | `es` | Spanish | `et` | Estonian | `fi` | Finnish |
+| `fr` | French | `hi` | Hindi | `hr` | Croatian | `hu` | Hungarian |
+| `id` | Indonesian | `it` | Italian | `lt` | Lithuanian | `lv` | Latvian |
+| `nl` | Dutch | `pl` | Polish | `pt` | Portuguese | `ro` | Romanian |
+| `ru` | Russian | `sk` | Slovak | `sl` | Slovenian | `sv` | Swedish |
+| `tr` | Turkish | `uk` | Ukrainian | `vi` | Vietnamese | | |
 
 ## License
 
-This project’s sample code is released under the MIT License. - see the [LICENSE](https://github.com/supertone-inc/supertonic?tab=MIT-1-ov-file) for details.
+This project's sample code is released under the MIT License. See the [GitHub repository](https://github.com/supertone-inc/supertonic) for details.
 
-The accompanying model is released under the OpenRAIL-M License. - see the [LICENSE](https://huggingface.co/Supertone/supertonic-2/blob/main/LICENSE) file for details.
+The accompanying model is released under the OpenRAIL-M License. See the [LICENSE](https://huggingface.co/Supertone/supertonic-3/blob/main/LICENSE) file in this repository for details.
 
-This model was trained using PyTorch, which is licensed under the BSD 3-Clause License but is not redistributed with this project. - see the [LICENSE](https://docs.pytorch.org/FBGEMM/general/License.html) for details.
+This model was trained using PyTorch, which is licensed under the BSD 3-Clause License but is not redistributed with this project. See the [PyTorch license](https://docs.pytorch.org/FBGEMM/general/License.html) for details.
 
 Copyright (c) 2026 Supertone Inc.

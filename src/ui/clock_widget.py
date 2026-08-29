@@ -9,12 +9,12 @@ class ClockWidget(QWidget):
         
         # Main Layout (Vertical: Clock Row, Date Row)
         main_layout = QVBoxLayout(self)
-        main_layout.setSpacing(5)
-        main_layout.setContentsMargins(10, 10, 10, 10)
-        
+        main_layout.setSpacing(3)
+        main_layout.setContentsMargins(0, 0, 0, 0)
+
         # --- Time Row ---
         time_layout = QHBoxLayout()
-        time_layout.setSpacing(10)
+        time_layout.setSpacing(8)
         
         # Hour
         self.hour_panel = self._create_digit_panel("00", "H")
@@ -29,7 +29,7 @@ class ClockWidget(QWidget):
         self.sec_label = self.sec_panel.findChild(QLabel, "digit")
         
         self.ampm_label = QLabel("AM")
-        self.ampm_label.setStyleSheet("color: white; font-size: 16px; font-weight: bold;")
+        self.ampm_label.setStyleSheet("color: white; font-size: 14px; font-weight: bold;")
         
         time_layout.addWidget(self.hour_panel)
         time_layout.addWidget(self.min_panel)
@@ -42,12 +42,12 @@ class ClockWidget(QWidget):
         self.date_label = QLabel()
         self.date_label.setAlignment(Qt.AlignmentFlag.AlignCenter)
         self.date_label.setStyleSheet("""
-            color: #888888; 
-            font-size: 14px;
-            padding: 5px;
+            color: #888888;
+            font-size: 13px;
+            padding: 1px;
             background: transparent;
             border-top: 1px solid #222;
-            margin-top: 5px;
+            margin-top: 2px;
         """)
         self.date_label.setFont(QFont("Arial", 12)) 
         
@@ -69,27 +69,27 @@ class ClockWidget(QWidget):
                 border-radius: 8px;
             }
         """)
-        panel.setFixedSize(70, 70)
-        
+        panel.setFixedSize(64, 64)
+
         layout = QVBoxLayout(panel)
         layout.setContentsMargins(0, 0, 0, 0)
         layout.setSpacing(0)
-        
+
         # Space for PM/AM if needed (top)
         layout.addStretch()
-        
+
         # Digit
         digit_lbl = QLabel(text)
         digit_lbl.setObjectName("digit")
         digit_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         digit_lbl.setStyleSheet("color: white; border: none;")
-        digit_lbl.setFont(QFont("Arial", 32, QFont.Weight.Bold))
+        digit_lbl.setFont(QFont("Arial", 29, QFont.Weight.Bold))
         layout.addWidget(digit_lbl)
-        
+
         # Suffix (H, M, S)
         suffix_lbl = QLabel(suffix)
         suffix_lbl.setAlignment(Qt.AlignmentFlag.AlignRight | Qt.AlignmentFlag.AlignBottom)
-        suffix_lbl.setStyleSheet("color: #aaaaaa; font-size: 12px; padding-right: 5px; padding-bottom: 2px; border: none;")
+        suffix_lbl.setStyleSheet("color: #aaaaaa; font-size: 10px; padding-right: 4px; padding-bottom: 1px; border: none;")
         layout.addWidget(suffix_lbl)
         
         return panel

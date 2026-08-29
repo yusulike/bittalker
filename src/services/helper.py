@@ -10,7 +10,7 @@ import onnxruntime as ort
 
 import re
 
-AVAILABLE_LANGS = ["en", "ko", "es", "pt", "fr"]
+AVAILABLE_LANGS = ["en", "ko", "ja", "ar", "bg", "cs", "da", "de", "el", "es", "et", "fi", "fr", "hi", "hr", "hu", "id", "it", "lt", "lv", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "tr", "uk", "vi", "na"]
 
 
 class UnicodeProcessor:
@@ -197,8 +197,10 @@ class TextToSpeech:
         )  # dur_onnx: [bsz]
         xt, latent_mask = self.sample_noisy_latent(dur_onnx)
         total_step_np = np.array([total_step] * bsz, dtype=np.float32)
+        # 사전 할당하여 매 step 배열 생성 오버헤드 제거
+        current_step = np.zeros(bsz, dtype=np.float32)
         for step in range(total_step):
-            current_step = np.array([step] * bsz, dtype=np.float32)
+            current_step.fill(step)  # in-place 업데이트
             xt, *_ = self.vector_est_ort.run(
                 None,
                 {
@@ -226,7 +228,7 @@ class TextToSpeech:
         assert (
             style.ttl.shape[0] == 1
         ), "Single speaker text to speech only supports single style"
-        max_len = 120 if lang == "ko" else 300
+        max_len = 120 if lang in ("ko", "ja") else 300
         text_list = chunk_text(text, max_len=max_len)
         wav_cat = None
         dur_cat = None
@@ -319,13 +321,18 @@ def load_text_processor(onnx_dir: str) -> UnicodeProcessor:
     return text_processor
 
 
-def load_text_to_speech(onnx_dir: str, use_gpu: bool = False) -> TextToSpeech:
+def load_text_to_speech(onnx_dir: str) -> TextToSpeech:
     opts = ort.SessionOptions()
-    if use_gpu:
-        raise NotImplementedError("GPU mode is not fully tested")
-    else:
-        providers = ["CPUExecutionProvider"]
-        print("Using CPU for inference")
+
+    # ONNX Runtime 속도 최적화 옵션 (로컬 튜닝, 업스트림 기본값 유지 시 대비 빠름)
+    opts.intra_op_num_threads = 4  # 연산 내 병렬 처리 (CPU 코어 수에 맞게 조정)
+    opts.inter_op_num_threads = 2  # 연산 간 병렬 처리
+    opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL  # 최대 그래프 최적화
+    opts.enable_mem_pattern = True  # 메모리 패턴 최적화
+    opts.enable_cpu_mem_arena = True  # CPU 메모리 아레나 활성
+
+    providers = ["CPUExecutionProvider"]
+    print("Using CPU for inference")
     cfgs = load_cfgs(onnx_dir)
     dp_ort, text_enc_ort, vector_est_ort, vocoder_ort = load_onnx_all(
         onnx_dir, opts, providers

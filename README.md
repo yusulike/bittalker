@@ -9,7 +9,7 @@ Real-time Bitcoin price monitoring desktop app with voice alerts.
 ## Features
 
 - 📈 **Real-time Price** - Binance WebSocket integration
-- 🔊 **Voice Alerts** - AI TTS powered by [Supertonic](https://github.com/supertone-inc/supertonic) (5 languages)
+- 🔊 **Voice Alerts** - AI TTS powered by [Supertonic 3](https://github.com/supertone-inc/supertonic) (5 languages)
 - 💰 **Price Interval Alerts** - Get notified when price crosses configurable thresholds (e.g., every $50, $100)
 - 🎨 **Dark Theme** - Modern UI with flip clock display
 - 📐 **Layout Modes** - Ticker (compact) / Normal mode
@@ -44,6 +44,9 @@ python src/main.py
 ```
 
 ## Requirements
+
+- Windows (audio playback uses `winsound`)
+- Python 3.10+
 
 ```
 PyQt6>=6.6.0
@@ -106,9 +109,10 @@ bittalker/
 
 ## Credits
 
-- **TTS Engine**: [Supertonic](https://github.com/supertone-inc/supertonic) by Supertone Inc.
+- **TTS Engine**: [Supertonic 3](https://github.com/supertone-inc/supertonic) by Supertone Inc.
   - Lightning-fast, on-device, multilingual TTS running natively via ONNX
-  - ⭐ 2.4k+ stars | Supports 5 languages
+  - Model assets: [Supertone/supertonic-3](https://huggingface.co/Supertone/supertonic-3) (31-language capable; this app uses 5)
+  - Note: upstream repository was archived in July 2026
 
 ## License
 
